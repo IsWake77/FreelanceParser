@@ -27,6 +27,17 @@ def clean_text(s):
     return _WS_RE.sub(' ', s).strip()
 
 def load_config(path='config.json'):
+    import os
+    if not os.path.exists(path):
+        env_path = os.environ.get('CONFIG_PATH')
+        if env_path and os.path.exists(env_path):
+            path = env_path
+        else:
+            raise FileNotFoundError(
+                f'Файл {path} не найден. Скопируй config.example.json в config.json '
+                'и впиши реальный bot_token, либо положи конфиг в другое место '
+                'и укажи путь через --config или переменную окружения CONFIG_PATH.'
+            )
     with open(path, encoding='utf-8') as f:
         return json.load(f)
 
