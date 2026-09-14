@@ -9,7 +9,7 @@
 ## Запуск
 
 ```bat
-cd c:\Users\fento\Desktop\pats\parser
+cd c:\Users\Имя Пользователя\Desktop\нужная папка
 python main.py          :: один проход
 python main.py --loop   :: цикл, проверка каждые 10 минут (interval_minutes)
 python bot.py           :: Telegram-бот с кнопками (см. ниже)
