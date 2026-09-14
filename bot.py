@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Telegram-бот поверх парсера фриланс-заказов (Kwork, FL.ru, Freelance.ru...).
 
@@ -18,7 +17,7 @@ import time
 import html
 import asyncio
 
-try:  # кириллица в консоли Windows
+try:
     if os.name == 'nt':
         os.system('chcp 65001 >nul 2>&1')
     sys.stdout.reconfigure(encoding='utf-8')
@@ -36,25 +35,21 @@ import favorites
 import estimator
 
 CONFIG_PATH = os.environ.get('PARSER_CONFIG', 'config.json')
-MAX_CARDS = 20          # максимум карточек заказов за один присест
-AUTO_TICK = 15          # как часто (сек) фоновый цикл проверяет расписание
+MAX_CARDS = 20
+AUTO_TICK = 15
 
-# ожидаемый текстовый ввод от пользователя (по chat_id)
-PENDING = {}            # chat_id -> 'kw_add' | 'kw_del' | 'token'
+PENDING = {}
 AUTO_TASK = None
 CYCLE_LOCK = asyncio.Lock()
-CARD_CACHE = {}         # hash(url) -> order (чтобы кнопка ⭐ знала заказ)
+CARD_CACHE = {}
 CARD_CACHE_MAX = 1000
 
 SOURCE_ORDER = list(core.SOURCES.keys())
 SOURCE_LABELS = {k: v[1] for k, v in core.SOURCES.items()}
 INTERVALS = [5, 10, 15, 30, 60]
 
-
-# ---------------------------------------------------------------- конфиг
 def save_config(cfg):
     core.save_config(cfg, CONFIG_PATH)
-
 
 def ensure_telegram_section(cfg):
     tg = cfg.setdefault('telegram', {})
@@ -63,13 +58,9 @@ def ensure_telegram_section(cfg):
     tg.setdefault('auto_chats', [])
     return tg
 
-
-# ---------------------------------------------------------------- доступ
 def is_admin(cfg, user_id):
     return user_id in (cfg.get('telegram') or {}).get('admin_ids', [])
 
-
-# ---------------------------------------------------------------- клавиатуры
 def main_kb(cfg, chat_id):
     auto = chat_id in (cfg.get('telegram') or {}).get('auto_chats', [])
     return InlineKeyboardMarkup([
@@ -82,7 +73,6 @@ def main_kb(cfg, chat_id):
         [InlineKeyboardButton('📊 Статистика', callback_data='stats')],
         [InlineKeyboardButton('⚙️ Настройки', callback_data='settings')],
     ])
-
 
 def settings_kb(cfg):
     rows = []
@@ -98,7 +88,6 @@ def settings_kb(cfg):
     rows.append([InlineKeyboardButton('↩️ Назад', callback_data='menu')])
     return InlineKeyboardMarkup(rows)
 
-
 def interval_kb(cfg):
     cur = cfg.get('interval_minutes', 10)
     buttons = []
@@ -107,7 +96,6 @@ def interval_kb(cfg):
             f"{'✅ ' if v == cur else ''}{v}", callback_data=f'iv:{v}'))
     return InlineKeyboardMarkup([buttons, [InlineKeyboardButton('↩️ Назад', callback_data='settings')]])
 
-
 def kw_kb():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton('➕ Добавить', callback_data='kw:add'),
@@ -115,8 +103,6 @@ def kw_kb():
         [InlineKeyboardButton('↩️ Настройки', callback_data='settings')],
     ])
 
-
-# ---------------------------------------------------------------- тексты
 def main_text():
     return ('👋 Бот-парсер фриланс-заказов\n\n'
             '🔍 <b>Проверить сейчас</b> — собрать заказы прямо сейчас\n'
@@ -129,7 +115,6 @@ def main_text():
             '🏠 — вернуться в меню. ⏱ на карточке — ИИ-оценка, '
             'сколько примерно часов займёт работа.')
 
-
 def kw_text(cfg):
     kws = cfg.get('keywords') or []
     exc = cfg.get('exclude_keywords') or []
@@ -140,16 +125,13 @@ def kw_text(cfg):
             "➕ Добавить — отправь слова через запятую\n"
             "🗑 Удалить — отправь слово (можно с *, например «бот*»)")
 
-
 def fmt_dt(s):
     if not s:
         return ''
     return str(s)[:16]
 
-
 def esc(s):
     return html.escape(str(s or ''), quote=False)
-
 
 def order_text(o, est=None):
     price = esc(o.get('price') or '—')
@@ -168,8 +150,6 @@ def order_text(o, est=None):
         lines.append(f"⏱ Работа: {esc(est)} (ИИ-оценка)")
     return '\n'.join(lines)[:4000]
 
-
-# ---------------------------------------------------------------- отправка заказов
 def card_kb(o):
     """Кнопки карточки заказа: избранное + ссылка + меню."""
     k = favorites.key(o)
@@ -183,14 +163,12 @@ def card_kb(o):
     rows.append([InlineKeyboardButton('🏠 Меню', callback_data='menu')])
     return InlineKeyboardMarkup(rows)
 
-
 def remember_card(o):
     k = favorites.key(o)
     if len(CARD_CACHE) >= CARD_CACHE_MAX:
         CARD_CACHE.pop(next(iter(CARD_CACHE)))
     CARD_CACHE[k] = o
     return k
-
 
 def favs_view():
     """Текст и клавиатура списка избранного."""
@@ -217,7 +195,6 @@ def favs_view():
     rows.append([InlineKeyboardButton('🏠 Меню', callback_data='menu')])
     return '\n'.join(lines)[:4000], InlineKeyboardMarkup(rows)
 
-
 async def get_estimate(o, cfg):
     """Оценка времени: ИИ (OpenAI), если задан ключ, иначе эвристика."""
     try:
@@ -226,7 +203,6 @@ async def get_estimate(o, cfg):
         return estimator.estimate(o, cfg, use_ai=False)
     except Exception:
         return None
-
 
 async def send_orders(app, chat_id, orders):
     """Карточки заказов с кнопками (не больше MAX_CARDS за раз)."""
@@ -239,7 +215,7 @@ async def send_orders(app, chat_id, orders):
             await app.bot.send_message(
                 chat_id, order_text(o, est), reply_markup=card_kb(o),
                 link_preview_options=LinkPreviewOptions(is_disabled=True))
-            await asyncio.sleep(0.4)  # не дразним flood-control
+            await asyncio.sleep(0.4)
         except Exception as e:
             print(f'  [bot] не удалось отправить заказ в {chat_id}: {e!r}')
     if len(orders) > MAX_CARDS:
@@ -247,7 +223,6 @@ async def send_orders(app, chat_id, orders):
             chat_id,
             f'…и ещё {len(orders) - MAX_CARDS} новых заказов — '
             f'полный список в orders.json / orders.csv')
-
 
 async def run_check(app, chat_id, status_msg=None):
     """Один цикл сбора. Возвращает (fresh, store). Сообщения — в чат."""
@@ -290,8 +265,6 @@ async def run_check(app, chat_id, status_msg=None):
             await send_orders(app, chat_id, fresh)
         return fresh, store
 
-
-# ---------------------------------------------------------------- фоновый цикл
 async def auto_loop(app):
     next_run = 0.0
     while True:
@@ -318,21 +291,17 @@ async def auto_loop(app):
                 next_run = time.time() + interval
         except Exception as e:
             print(f'[bot] ошибка фонового цикла: {e!r}')
-            next_run = time.time() + 120  # при ошибке подождём 2 минуты
+            next_run = time.time() + 120
         await asyncio.sleep(AUTO_TICK)
-
 
 async def post_init(app):
     global AUTO_TASK
     AUTO_TASK = asyncio.create_task(auto_loop(app))
 
-
 async def post_shutdown(app):
     if AUTO_TASK:
         AUTO_TASK.cancel()
 
-
-# ---------------------------------------------------------------- хендлеры
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cfg = context.bot_data['cfg']
     tg = ensure_telegram_section(cfg)
@@ -341,7 +310,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not is_admin(cfg, user.id):
         if not tg['admin_ids']:
-            # первый запустивший становится владельцем бота
             tg['admin_ids'].append(user.id)
             save_config(cfg)
             await update.message.reply_text(
@@ -356,7 +324,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         main_text(), parse_mode='HTML',
         reply_markup=main_kb(cfg, chat_id))
 
-
 async def cmd_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cfg = context.bot_data['cfg']
     if not is_admin(cfg, update.effective_user.id):
@@ -367,7 +334,6 @@ async def cmd_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'Отправь токен сообщением (получил у @BotFather).\n'
         'После сохранения перезапусти бота.')
 
-
 async def cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cfg = context.bot_data['cfg']
     tg = ensure_telegram_section(cfg)
@@ -377,7 +343,6 @@ async def cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_config(cfg)
     await update.message.reply_text(
         '⏹ Автопроверка выключена.', reply_markup=main_kb(cfg, chat_id))
-
 
 async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -530,7 +495,7 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         by_src = {}
         for o in orders:
             by_src[o.get('source', '?')] = by_src.get(o.get('source', '?'), 0) + 1
-        last = orders[0]  # отсортированы по found_at (свежие сверху)
+        last = orders[0]
         lines = ['📊 <b>Статистика</b>', f'Всего в базе: <b>{len(orders)}</b>']
         lines += [f'• {k}: {v}' for k, v in sorted(by_src.items(),
                                                    key=lambda x: -x[1])]
@@ -556,7 +521,6 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(
             'Отправь слово (или несколько через запятую), которое убрать '
             'из ключевых слов.\nНапример: «бот*» уберёт и «бот*», и «бот».')
-
 
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cfg = context.bot_data['cfg']
@@ -616,8 +580,6 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(kw_text(cfg), parse_mode='HTML',
                                         reply_markup=kw_kb())
 
-
-# ---------------------------------------------------------------- запуск
 def main():
     cfg = core.load_config(CONFIG_PATH)
     ensure_telegram_section(cfg)
@@ -647,7 +609,6 @@ def main():
     print(f'🤖 Бот запущен. Владелец(ы): {owners}')
     print('Остановить: Ctrl+C')
     app.run_polling(drop_pending_updates=True)
-
 
 if __name__ == '__main__':
     main()

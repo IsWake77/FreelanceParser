@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Profi.ru — заявки.
 
 Особенность: profi.ru жёстко блокирует не-браузерные клиенты (TLS-отпечаток),
@@ -15,7 +14,6 @@ import re
 import html as htmllib
 
 from .base import HttpClient, HttpError
-
 
 def fetch(config):
     cookies = (config.get('cookies') or '').strip()

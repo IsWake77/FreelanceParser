@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Workzilla — лента заданий https://workzilla.com/quests.
 
 Гостям список заданий недоступен: нужен cookie-файл из браузера.
@@ -14,7 +13,6 @@ import re
 import html as htmllib
 
 from .base import HttpClient, HttpError
-
 
 def fetch(config):
     cookies = (config.get('cookies') or '').strip()
@@ -33,7 +31,6 @@ def fetch(config):
         print('  [workzilla] cookies не сработали — заданий не видно')
     orders = []
     seen = set()
-    # карточки заданий: ссылки вида /quests/<id> (best effort — вёрстка меняется)
     for m in re.finditer(
             r'<a[^>]+href="/quests/(\d+)"[^>]*>(.*?)</a>', page, re.S):
         qid, inner = m.group(1), htmllib.unescape(re.sub(r'<[^>]+>', ' ', m.group(2)))

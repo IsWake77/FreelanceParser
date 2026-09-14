@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Хранилище заказов: orders.json (всё, с дедупом) + orders.csv (Excel)."""
 import csv
 import json
@@ -7,7 +6,6 @@ import os
 FIELDS = ['found_at', 'source', 'title', 'price', 'url', 'date',
           'category', 'responses', 'description']
 
-
 class OrderStore:
     def __init__(self, json_path, csv_path, max_orders=5000):
         self.json_path = json_path
@@ -15,7 +13,6 @@ class OrderStore:
         self.max_orders = max_orders
         self.orders = self._load_json()
 
-    # ---------- внутреннее ----------
     def _load_json(self):
         if not os.path.exists(self.json_path):
             return []
@@ -47,7 +44,6 @@ class OrderStore:
             for o in new_orders:
                 w.writerow({k: o.get(k, '') for k in FIELDS})
 
-    # ---------- публичное ----------
     def add(self, orders):
         """Добавляет только новые заказы. Возвращает список новых."""
         seen = {self._key(o) for o in self.orders}

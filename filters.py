@@ -1,13 +1,10 @@
-# -*- coding: utf-8 -*-
 """Фильтр заказов по ключевым словам (стемы, исключения)."""
 import re
-
 
 def _normalize(text):
     """Нижний регистр + ё->е + схлопывание пробелов."""
     t = (text or '').lower().replace('ё', 'е')
     return re.sub(r'\s+', ' ', t)
-
 
 class KeywordFilter:
     """Заказ проходит, если найдено >= min_matches ключевых слов и ни одного
@@ -28,8 +25,6 @@ class KeywordFilter:
 
     @staticmethod
     def _hit(kind, word, text):
-        # в обоих режимах слово должно начинаться с границы слова
-        # (иначе 'бот' поймает 'работать')
         pat = r'(?<![a-zа-я0-9])' + re.escape(word)
         if kind == 'prefix':
             return re.search(pat, text) is not None

@@ -69,6 +69,29 @@ python bot.py           :: Telegram-бот с кнопками (см. ниже)
 
 Колонки CSV: `found_at, source, title, price, url, date, category, responses, description`.
 
+## Структура кода
+
+| Файл | За что отвечает |
+|---|---|
+| `main.py` | консольная точка входа: загрузка конфига, один цикл сбора, вывод свежих заказов в терминал |
+| `bot.py` | Telegram-бот (python-telegram-bot v22): меню с inline-кнопками, автопроверка по таймеру, избранное, настройка источников/интервала/ключевых слов прямо из чата. Власть только у первого `/start` (`admin_ids`) |
+| `core.py` | сердце парсера: `run_cycle()` прогоняет все включённые источники, чистит HTML из текстов (`clean_text`), фильтрует, дедуплицирует через хранилище и возвращает только новые заказы |
+| `sources/` | по одному адаптеру на площадку, у каждого свой `fetch(config)`: |
+| `sources/kwork.py` | AJAX `POST /projects` → JSON с ценой и датой (щадящий rate-limit) |
+| `sources/flru.py` | RSS-лента FL.ru (без цен) |
+| `sources/freelanceru.py` | HTML-парсинг категорий «Веб-разработка и IT» и «ИИ» |
+| `sources/workzilla.py` | HTML `/quests`, требует cookies из браузера (выключен по умолчанию) |
+| `sources/profiru.py` | `/orders`, обходит антибот только с cookies (выключен по умолчанию) |
+| `sources/base.py` | общий HTTP-клиент с ретраями, таймаутами и поддержкой raw-cookie |
+| `filters.py` | `KeywordFilter`: стемы (`бот*` → «бота/боты/ботов»), составные фразы, исключения (отзывы, упоминания), `min_matches` |
+| `storage.py` | `OrderStore`: дедупликация по URL между запусками, запись `orders.json` + `orders.csv` (utf-8-sig для Excel) |
+| `favorites.py` | избранное бота: `favorites.json`, короткий md5-хэш от URL используется в callback-кнопках |
+| `estimator.py` | ИИ-оценка времени на заказ: эвристика (тип задачи × модификаторы сложности) + опционально gpt-4o-mini по `openai_api_key`, кэш в `estimates.json` |
+
+Поток данных: `sources/*.fetch()` → `core.clean_text()` → `filters.KeywordFilter` → `storage.OrderStore` (дедуп) → `bot.send_orders()` (карточки с ⭐/🔗/🏠 и ⏱-оценкой).
+
+Свой источник = один файл в `sources/` с функцией `fetch(config)`, возвращающей список словарей `{source, title, url, price, date, category, description, responses}`, плюс строка в `SOURCES` в `core.py`.
+
 ## Как это работает
 
 1. Каждый включённый источник отдаёт свежие заказы (см. таблицу ниже).

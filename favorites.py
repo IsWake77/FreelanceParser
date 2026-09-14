@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Избранные заказы (favorites.json). Хэш от URL используется в callback-кнопках."""
 import json
 import hashlib
@@ -6,11 +5,9 @@ import datetime
 
 PATH = 'favorites.json'
 
-
 def key(order):
     """Короткий стабильный идентификатор заказа (для callback_data)."""
     return hashlib.md5(str(order.get('url', '')).encode('utf-8')).hexdigest()[:12]
-
 
 def _load():
     if not __import__('os').path.exists(PATH):
@@ -22,7 +19,6 @@ def _load():
     except (json.JSONDecodeError, OSError):
         return []
 
-
 def _save(favs):
     tmp = PATH + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
@@ -30,15 +26,12 @@ def _save(favs):
     import os
     os.replace(tmp, PATH)
 
-
 def all_orders():
     return _load()
-
 
 def has(order):
     k = key(order)
     return any(key(f) == k for f in _load())
-
 
 def add(order):
     """Добавляет заказ. Возвращает True, если добавлен (не был в избранном)."""
@@ -52,7 +45,6 @@ def add(order):
     _save(favs)
     return True
 
-
 def remove_by_key(k):
     """Удаляет по короткому хэшу. Возвращает True, если удалили."""
     favs = _load()
@@ -61,7 +53,6 @@ def remove_by_key(k):
         return False
     _save(rest)
     return True
-
 
 def get_by_key(k):
     """Возвращает заказ по хэшу (избранное или None)."""

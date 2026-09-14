@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Freelance.ru — HTML-лента заданий https://freelance.ru/task.
 
 Категории (параметр c[]):
@@ -19,11 +18,9 @@ CATEGORY_CODES = {
 
 _RUB = '\u20bd'
 
-
 def _clean(s):
     s = htmllib.unescape(s or '')
     return re.sub(r'\s+', ' ', s).strip()
-
 
 def _parse_budget(block):
     m = re.search(r'<div class="task-card__budget[^"]*">\s*'
@@ -35,17 +32,13 @@ def _parse_budget(block):
         return b
     return b or None
 
-
 def _parse_date(block):
-    # дата полного вида сидит в title у элемента "N минут назад"
     m = re.search(r'title="(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2})"', block)
     return m.group(1) if m else None
-
 
 def _parse_relative(block):
     m = re.search(r'<i class="fa fa-clock-o[^"]*"[^>]*></i>\s*([^<]+)</span>', block)
     return _clean(m.group(1)) if m else None
-
 
 def fetch(config):
     client = HttpClient(retries=1)
@@ -58,7 +51,6 @@ def fetch(config):
         print(f'  [freelance.ru] ошибка: {e}')
         return []
     orders = []
-    # карточки вёрсткой отличаются — режем страницу по ссылкам-заголовкам
     marks = list(re.finditer(r'<a class="task-card__title-link" href="(/task/view/\d+)"'
                              r' title="([^"]*)"', page))
     for i, m in enumerate(marks):

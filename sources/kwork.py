@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Kwork — AJAX-лента проектов (POST https://kwork.ru/projects).
 
 Ответ JSON: data.wants[] с полями id, name, priceLimit, date_create,
@@ -14,18 +13,11 @@ import uuid
 
 from .base import HttpClient, HttpError
 
-# Категории Kwork (id можно посмотреть в URL: kwork.ru/projects?c=<id>):
-#   11  — Боты и чаты
-#   45  — Разработка (общая)
-#   85  — Создание сайтов
-# Список легко правится в config.json; пустой список = вся лента + ключевые слова.
 DEFAULT_CATEGORIES = [11, 45, 85]
-
 
 def _multipart(fields):
     boundary = '----' + uuid.uuid4().hex
     return boundary, fields
-
 
 def fetch(config):
     client = HttpClient(retries=1, pause=4.0)
@@ -34,11 +26,10 @@ def fetch(config):
         categories = DEFAULT_CATEGORIES
     max_items = int(config.get('max_items', 40))
     requests_pause = float(config.get('pause_seconds', 6))
-    # отсекаем старые заказы (в общей ленте kwork встречаются месячной давности)
     max_age_days = float(config.get('max_age_days', 3))
     min_dt = datetime.datetime.now() - datetime.timedelta(days=max_age_days)
     orders = []
-    cats = [None] + list(categories)   # None = вся лента без фильтра
+    cats = [None] + list(categories)
     for cat in cats:
         if len(orders) >= max_items:
             break

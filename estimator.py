@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Оценка времени на выполнение заказа.
 
@@ -18,7 +17,6 @@ CACHE_PATH = 'estimates.json'
 OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 OPENAI_MODEL = 'gpt-4o-mini'
 
-# (шаблон, базовые часы) — берётся максимум по совпадениям
 RULES = [
     (r'интернет[- ]?магазин|маркетплейс|\bcrm\b|\berp\b', 70),
     (r'мини[- ]?приложени|mini app|marketplace', 50),
@@ -36,11 +34,10 @@ RE_SMALL = re.compile(r'правк|доработ|поправ|исправ|\bб
 RE_BIG = re.compile(r'с нуля|под ключ|полноценн|комплексн|крупн|продвинут|'
                     r'профессиональн|масштаб|многостранич|с нуля до')
 
-
 def estimate_hours(order):
     """Эвристика: возвращает (мин_часов, макс_часов)."""
     text = ' '.join([order.get('title') or '', order.get('description') or '']).lower()
-    base = 10  # если ничего не распознали — «небольшая задача»
+    base = 10
     for pat, hours in RULES:
         if re.search(pat, text):
             base = max(base, hours)
@@ -49,22 +46,19 @@ def estimate_hours(order):
     elif RE_BIG.search(text):
         base *= 1.6
     if len(text) > 800:
-        base *= 1.25  # объёмное ТЗ
+        base *= 1.25
     lo = max(1, round(base * 0.7))
     hi = max(2, round(base * 1.5))
     return lo, hi
-
 
 def fmt_hours(lo, hi):
     if hi <= 1:
         return '~1 ч'
     return f'~{lo}–{hi} ч'
 
-
 def _cache_key(order):
     raw = f"{order.get('url')}|{order.get('title')}"
     return hashlib.md5(raw.encode('utf-8')).hexdigest()[:16]
-
 
 def _cache_load():
     try:
@@ -73,13 +67,11 @@ def _cache_load():
     except (json.JSONDecodeError, OSError):
         return {}
 
-
 def _cache_save(cache):
     tmp = CACHE_PATH + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(cache, f, ensure_ascii=False, indent=1)
     os.replace(tmp, CACHE_PATH)
-
 
 def ai_estimate(order, api_key, timeout=15):
     """Запрос к OpenAI. Возвращает строку вида '~12–20 ч' или None при ошибке."""
@@ -114,7 +106,6 @@ def ai_estimate(order, api_key, timeout=15):
     except Exception:
         return None
     return None
-
 
 def estimate(order, cfg=None, use_ai=True):
     """Главная функция: строка оценки с учётом кэша и (опционально) OpenAI."""

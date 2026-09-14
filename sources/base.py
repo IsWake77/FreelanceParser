@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Базовый HTTP-клиент для всех источников (только stdlib).
 Умеет: cookie-сессии, User-Agent, таймауты, повторные попытки.
@@ -12,10 +11,8 @@ import urllib.parse
 DEFAULT_UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
               '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36')
 
-
 class HttpError(Exception):
     """Ошибка HTTP/сети при запросе к источнику."""
-
 
 class HttpClient:
     """Простая сессия с куками и ретраями."""
@@ -38,7 +35,6 @@ class HttpClient:
             urllib.request.HTTPCookieProcessor(self.cookie_jar))
         self.raw_cookie = (raw_cookie or '').strip()
 
-    # ---------- низкий уровень ----------
     def request(self, url, method='GET', data=None, headers=None,
                 as_multipart=None, form=None):
         """Возвращает (status, bytes ответа). Бросает HttpError после ретраев."""
@@ -71,7 +67,6 @@ class HttpClient:
                 with self.opener.open(req, timeout=self.timeout) as resp:
                     return resp.status, resp.read()
             except urllib.error.HTTPError as e:
-                # 403/404/5xx — ретраим тоже (kwork отдаёт 403 при rate-limit)
                 last_err = HttpError(f'HTTP {e.code} для {url}')
                 try:
                     e.read()

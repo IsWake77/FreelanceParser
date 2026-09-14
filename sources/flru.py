@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """FL.ru — RSS-лента заказов (категория 5 = Программирование)."""
 import re
 import html as htmllib
@@ -8,12 +7,9 @@ from .base import HttpClient, HttpError
 
 RSS_URL = 'https://www.fl.ru/rss/all.xml?category={category}'
 
-# Пригодные для нас категории FL.ru (можно расширять в config.json):
-#   5  — Программирование (включая Веб-программирование, БД, Скрипты, CRM/ERP...)
 CATEGORY_CODES = {
     '5': 'Программирование',
 }
-
 
 def fetch(config):
     """Возвращает список заказов (dict)."""
@@ -45,7 +41,7 @@ def fetch(config):
                 'source': 'fl.ru',
                 'title': title,
                 'url': link,
-                'price': None,          # RSS цену не отдаёт
+                'price': None,
                 'date': pub,
                 'category': cat_name or code,
                 'description': desc[:1500],

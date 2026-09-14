@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Общая логика цикла сбора заказов.
 
@@ -19,7 +18,6 @@ import storage
 _TAG_RE = re.compile(r'<[^>]+>')
 _WS_RE = re.compile(r'\s+')
 
-
 def clean_text(s):
     """Убирает HTML-теги (<b>...</b> и пр.) и лишние пробелы из текста."""
     if not s:
@@ -28,11 +26,9 @@ def clean_text(s):
     s = htmllib.unescape(s)
     return _WS_RE.sub(' ', s).strip()
 
-
 def load_config(path='config.json'):
     with open(path, encoding='utf-8') as f:
         return json.load(f)
-
 
 def save_config(cfg, path='config.json'):
     tmp = path + '.tmp'
@@ -48,7 +44,6 @@ SOURCES = {
     'workzilla': ('sources.workzilla', 'Workzilla'),
     'profiru': ('sources.profiru', 'Profi.ru'),
 }
-
 
 def run_cycle(cfg, log=print):
     """Один проход по всем включённым источникам.
@@ -75,12 +70,11 @@ def run_cycle(cfg, log=print):
         try:
             mod = importlib.import_module(module)
             orders = mod.fetch(scfg)
-        except Exception as e:  # источник не должен ронять весь цикл
+        except Exception as e:
             log(f'  [{label}] непредвиденная ошибка: {e!r}')
             continue
         matched = []
         for o in orders:
-            # чистим HTML-разметку, которую отдают источники (kwork шлёт <b>)
             for field in ('title', 'description', 'category'):
                 o[field] = clean_text(o.get(field))
             ok, n, hits = kf.match(o.get('title', ''), o.get('description', ''))

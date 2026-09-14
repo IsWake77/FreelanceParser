@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Фриланс-парсер заказов: kwork, fl.ru, freelance.ru, workzilla, profi.ru.
 
@@ -18,7 +17,7 @@ import os
 import time
 import argparse
 
-try:  # чтобы кириллица корректно печаталась в консоли Windows
+try:
     if os.name == 'nt':
         os.system('chcp 65001 >nul 2>&1')
     sys.stdout.reconfigure(encoding='utf-8')
@@ -27,7 +26,6 @@ except Exception:
     pass
 
 import core
-
 
 def main():
     ap = argparse.ArgumentParser(description='Парсер фриланс-заказов')
@@ -49,7 +47,6 @@ def main():
         except Exception as e:
             print(f'Ошибка цикла: {e!r}')
         time.sleep(interval * 60)
-
 
 if __name__ == '__main__':
     main()
