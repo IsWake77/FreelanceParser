@@ -1,7 +1,6 @@
 # Фриланс-парсер заказов
 
-Собирает заказы с **Kwork, FL.ru, Freelance.ru, Workzilla, Profi.ru** для fullstack программистов (телеграм-боты, Mini Apps, SaaS, веб-приложения, сайты, API, бэкенд,
-автоматизация) и складывает их в `orders.json` и `orders.csv`.
+Собирает заказы с **Kwork, FL.ru, Freelance.ru, Workzilla, Profi.ru** по твоим ключевым словам и складывает их в `orders.json` и `orders.csv`.
 
 Парсер — на чистой стандартной библиотеке Python. Для Telegram-бота ставится
 одна библиотека: `pip install python-telegram-bot` (уже установлена).
