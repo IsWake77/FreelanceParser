@@ -1,0 +1,144 @@
+{
+  "openai_api_key": "",
+  "keywords": [
+    "телеграм бот",
+    "телеграм-бот",
+    "telegram бот",
+    "telegram bot",
+    "чат-бот",
+    "чат бот",
+    "tg бот",
+    "бот",
+    "bot",
+    "бот*",
+    "телеграм",
+    "telegram",
+    "tg",
+    "telegram mini app",
+    "mini app",
+    "mini apps",
+    "мини приложение",
+    "мини-приложение",
+    "web app",
+    "веб-приложение",
+    "веб приложение",
+    "веб",
+    "вэб",
+    "веб-сайт",
+    "вебсайт",
+    "saas",
+    "сайт",
+    "сайта",
+    "сайту",
+    "лендинг",
+    "landing",
+    "интернет-магазин",
+    "интернет магазин",
+    "магазин",
+    "crm",
+    "cms",
+    "личный кабинет",
+    "дашборд",
+    "dashboard",
+    "воронка",
+    "интеграция",
+    "автоматизац*",
+    "приложени*",
+    "api",
+    "бэкенд",
+    "backend",
+    "бэкенд-разработ",
+    "фулстак",
+    "fullstack",
+    "full-stack",
+    "парсер",
+    "парсинг",
+    "скрипт",
+    "python",
+    "javascript",
+    "node.js",
+    "nodejs",
+    "react",
+    "vue",
+    "django",
+    "laravel",
+    "wordpress",
+    "tilda",
+    "тильда",
+    "ai-агент",
+    "ии-агент",
+    "gpt",
+    "openai",
+    "нейросет*",
+    "расширение",
+    "виджет",
+    "программист",
+    "разработчик",
+    "разработк*",
+    "телеграм-бот"
+  ],
+  "exclude_keywords": [
+    "написание отзыв",
+    "написать отзыв",
+    "оставить отзыв",
+    "нужны отзыв*",
+    "отзывы на заказ",
+    "лайк*",
+    "подписчик*",
+    "упоминани*",
+    "набор текста",
+    "расшифровка аудио",
+    "транскрибация"
+  ],
+  "min_matches": 1,
+  "interval_minutes": 5,
+  "pause_between_sources": 3,
+  "telegram": {
+    "bot_token": "СТЬ_С_Т_Т_BOTFATHER",
+    "admin_ids": [
+      7700935323
+    ],
+    "auto_chats": []
+  },
+  "output": {
+    "json": "orders.json",
+    "csv": "orders.csv"
+  },
+  "sources": {
+    "kwork": {
+      "enabled": true,
+      "categories": [
+        11,
+        45,
+        85
+      ],
+      "max_items": 40,
+      "pause_seconds": 6
+    },
+    "flru": {
+      "enabled": true,
+      "categories": [
+        "5"
+      ],
+      "max_items": 50
+    },
+    "freelanceru": {
+      "enabled": true,
+      "categories": [
+        "4",
+        "724"
+      ],
+      "max_items": 60
+    },
+    "workzilla": {
+      "enabled": false,
+      "cookies": "",
+      "max_items": 30
+    },
+    "profiru": {
+      "enabled": false,
+      "cookies": "",
+      "max_items": 30
+    }
+  }
+}

@@ -1,0 +1,22 @@
+# секреты и личные данные
+config.json
+
+# результаты работы
+orders.json
+orders.csv
+favorites.json
+estimates.json
+
+# логи
+bot_out.log
+bot_err.log
+*.log
+
+# временные скрипты
+_*.py
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
