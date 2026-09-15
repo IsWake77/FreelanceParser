@@ -753,6 +753,11 @@ def _make_request(proxy=''):
     except TypeError:  # старые версии PTB (<20.7) использовали proxy_url
         return HTTPXRequest(proxy_url=proxy or None, connection_pool_size=8)
 
+async def on_error(update, context):
+    """Не даём разовым сетевым сбоям ронять бота — просто заметка в консоль."""
+    err = context.error
+    print(f'⚠️ {type(err).__name__}: {str(err).splitlines()[0][:160]}')
+
 def main():
     cfg = core.load_config(CONFIG_PATH)
     ensure_telegram_section(cfg)
@@ -782,6 +787,7 @@ def main():
     app.add_handler(CommandHandler('stop', cmd_stop))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
+    app.add_error_handler(on_error)
 
     owners = cfg['telegram']['admin_ids'] or 'назначится по /start'
     print(f'🤖 Бот запущен. Владелец(ы): {owners}')
