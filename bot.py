@@ -110,7 +110,7 @@ def main_text():
             '🔍 <b>Проверить сейчас</b> — собрать заказы прямо сейчас\n'
             '🤖 <b>Автопроверка</b> — присылать новые заказы автоматически\n'
             '⭐ <b>Избранное</b> — заказы, отмеченные звёздочкой\n'
-            '📋 <b>Последние заказы</b> — показать свежие из базы\n'
+            '📋 <b>Последние заказы</b> — свежие из базы, листай страницами\n'
             '🗂 <b>Все заказы</b> — вся база с статусами (✅/⛔️/❔)\n'
             '♻️ <b>Актуальность</b> — проверить, живы ли заказы в базе\n'
             '📊 <b>Статистика</b> — что уже в базе\n'
@@ -156,6 +156,38 @@ def all_view(cfg, page=0):
     rows.append([InlineKeyboardButton('♻️ Проверить актуальность',
                                       callback_data='act')])
     rows.append([InlineKeyboardButton('🏠 Меню', callback_data='menu')])
+    return '\n'.join(lines)[:4000], InlineKeyboardMarkup(rows)
+
+LAST_PAGE = 10
+
+def latest_view(cfg, page=0):
+    """Экран «Последние»: свежие заказы из базы, с пагинацией."""
+    store = _store(cfg)
+    orders = store.orders
+    if not orders:
+        return ('📋 <b>База пуста</b>\n\nНажми «🔍 Проверить сейчас».',
+                InlineKeyboardMarkup([[InlineKeyboardButton(
+                    '🏠 Меню', callback_data='menu')]]))
+    total_pages = (len(orders) + LAST_PAGE - 1) // LAST_PAGE
+    page = max(0, min(page, total_pages - 1))
+    chunk = orders[page * LAST_PAGE:(page + 1) * LAST_PAGE]
+    lines = [f'📋 <b>Последние заказы — {len(orders)}</b>\n']
+    for o in chunk:
+        title = esc(o.get('title') or '(без названия)')[:70]
+        price = esc(o.get('price') or '—')
+        dt = fmt_dt(o.get('date') or o.get('found_at'))
+        url = o.get('url') or ''
+        link = f'<a href="{url}">🔗 открыть</a>' if url else ''
+        lines.append(f'• <b>{title}</b>\n  {price} · {dt} · {link}')
+    rows = []
+    if total_pages > 1:
+        rows.append([
+            InlineKeyboardButton('⬅️', callback_data=f'latp:{page - 1}'),
+            InlineKeyboardButton(f'{page + 1}/{total_pages}', callback_data='noop'),
+            InlineKeyboardButton('➡️', callback_data=f'latp:{page + 1}'),
+        ])
+    rows.append([InlineKeyboardButton('🗂 Все заказы', callback_data='all'),
+                 InlineKeyboardButton('🏠 Меню', callback_data='menu')])
     return '\n'.join(lines)[:4000], InlineKeyboardMarkup(rows)
 
 def act_view(cfg):
@@ -536,25 +568,19 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                    show_alert=True)
 
     elif data == 'latest':
-        import storage
-        store = storage.OrderStore(cfg['output']['json'], cfg['output']['csv'])
-        orders = store.orders[:15]
-        if not orders:
-            await query.answer('База пуста — нажми «Проверить сейчас»',
-                               show_alert=True)
-            return
-        lines = ['📋 <b>Последние заказы</b>\n']
-        for o in orders:
-            title = esc(o.get('title') or '(без названия)')[:70]
-            price = esc(o.get('price') or '—')
-            dt = fmt_dt(o.get('date') or o.get('found_at'))
-            url = o.get('url') or ''
-            link = f'<a href="{url}">🔗 открыть</a>' if url else ''
-            lines.append(f"• <b>{title}</b>\n  {price} · {dt} · {link}")
-        lines.append(f'\nВсего в базе: {len(store.orders)}')
+        text, kb = latest_view(cfg, page=0)
         await query.edit_message_text(
-            '\n'.join(lines)[:4000], parse_mode='HTML',
-            reply_markup=main_kb(cfg, chat_id),
+            text, parse_mode='HTML', reply_markup=kb,
+            link_preview_options=LinkPreviewOptions(is_disabled=True))
+
+    elif data.startswith('latp:'):
+        try:
+            page = int(data.split(':', 1)[1])
+        except ValueError:
+            page = 0
+        text, kb = latest_view(cfg, page=page)
+        await query.edit_message_text(
+            text, parse_mode='HTML', reply_markup=kb,
             link_preview_options=LinkPreviewOptions(is_disabled=True))
 
     elif data == 'stats':
