@@ -29,6 +29,7 @@ from telegram import (Update, InlineKeyboardButton, InlineKeyboardMarkup,
                       LinkPreviewOptions)
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
                           MessageHandler, filters, ContextTypes)
+from telegram.request import HTTPXRequest
 
 import core
 import favorites
@@ -745,6 +746,13 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(kw_text(cfg), parse_mode='HTML',
                                         reply_markup=kw_kb())
 
+def _make_request(proxy=''):
+    """HTTPXRequest с увеличенным пулом; при заданном proxy — через прокси."""
+    try:
+        return HTTPXRequest(proxy=proxy or None, connection_pool_size=8)
+    except TypeError:  # старые версии PTB (<20.7) использовали proxy_url
+        return HTTPXRequest(proxy_url=proxy or None, connection_pool_size=8)
+
 def main():
     cfg = core.load_config(CONFIG_PATH)
     ensure_telegram_section(cfg)
@@ -756,8 +764,13 @@ def main():
         print('   3) Запусти: python bot.py')
         return
 
+    proxy = (cfg['telegram'].get('proxy')
+             or os.environ.get('TG_PROXY') or '').strip()
+
     app = (Application.builder()
            .token(token)
+           .request(_make_request(proxy))
+           .get_updates_request(_make_request(proxy))
            .post_init(post_init)
            .post_shutdown(post_shutdown)
            .build())
@@ -772,6 +785,11 @@ def main():
 
     owners = cfg['telegram']['admin_ids'] or 'назначится по /start'
     print(f'🤖 Бот запущен. Владелец(ы): {owners}')
+    print(f'   код: {os.path.abspath(__file__)}')
+    if proxy:
+        print(f'   прокси Telegram API: {proxy}')
+    print('   меню: ' + ' / '.join(
+        b.text for row in main_kb(cfg, 1).inline_keyboard for b in row))
     print('Остановить: Ctrl+C')
     app.run_polling(drop_pending_updates=True)
 
