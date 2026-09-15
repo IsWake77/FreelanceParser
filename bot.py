@@ -71,6 +71,8 @@ def main_kb(cfg, chat_id):
         [InlineKeyboardButton('⭐ Избранное', callback_data='favs'),
          InlineKeyboardButton('📋 Последние', callback_data='latest')],
         [InlineKeyboardButton('📊 Статистика', callback_data='stats')],
+        [InlineKeyboardButton('🗂 Все заказы', callback_data='all'),
+         InlineKeyboardButton('♻️ Актуальность', callback_data='act')],
         [InlineKeyboardButton('⚙️ Настройки', callback_data='settings')],
     ])
 
@@ -109,11 +111,77 @@ def main_text():
             '🤖 <b>Автопроверка</b> — присылать новые заказы автоматически\n'
             '⭐ <b>Избранное</b> — заказы, отмеченные звёздочкой\n'
             '📋 <b>Последние заказы</b> — показать свежие из базы\n'
+            '🗂 <b>Все заказы</b> — вся база с статусами (✅/⛔️/❔)\n'
+            '♻️ <b>Актуальность</b> — проверить, живы ли заказы в базе\n'
             '📊 <b>Статистика</b> — что уже в базе\n'
             '⚙️ <b>Настройки</b> — источники, интервал, ключевые слова\n\n'
             'На каждой карточке заказа: ⭐ — в избранное, 🔗 — открыть, '
             '🏠 — вернуться в меню. ⏱ на карточке — ИИ-оценка, '
             'сколько примерно часов займёт работа.')
+
+def _store(cfg):
+    import storage
+    return storage.OrderStore(cfg['output']['json'], cfg['output']['csv'])
+
+ALL_PAGE = 12
+
+def all_view(cfg, page=0):
+    """Экран «Все заказы»: вся база со статусами, с пагинацией."""
+    store = _store(cfg)
+    orders = store.orders
+    if not orders:
+        return ('🗂 <b>База пуста</b>\n\nНажми «🔍 Проверить сейчас».',
+                InlineKeyboardMarkup([[InlineKeyboardButton(
+                    '🏠 Меню', callback_data='menu')]]))
+    total_pages = (len(orders) + ALL_PAGE - 1) // ALL_PAGE
+    page = max(0, min(page, total_pages - 1))
+    chunk = orders[page * ALL_PAGE:(page + 1) * ALL_PAGE]
+    icons = {'actual': '✅', 'closed': '⛔️'}
+    lines = [f'🗂 <b>Все заказы — {len(orders)}</b>\n']
+    for o in chunk:
+        st = icons.get(o.get('status'), '❔')
+        title = esc(o.get('title') or '(без названия)')[:60]
+        price = esc(o.get('price') or '—')
+        dt = fmt_dt(o.get('date') or o.get('found_at'))
+        url = o.get('url') or ''
+        link = f'<a href="{url}">🔗</a>' if url else ''
+        lines.append(f'{st} <b>{title}</b>\n  {price} · {dt} · {link}')
+    rows = []
+    if total_pages > 1:
+        rows.append([
+            InlineKeyboardButton('⬅️', callback_data=f'allp:{page - 1}'),
+            InlineKeyboardButton(f'{page + 1}/{total_pages}', callback_data='noop'),
+            InlineKeyboardButton('➡️', callback_data=f'allp:{page + 1}'),
+        ])
+    rows.append([InlineKeyboardButton('♻️ Проверить актуальность',
+                                      callback_data='act')])
+    rows.append([InlineKeyboardButton('🏠 Меню', callback_data='menu')])
+    return '\n'.join(lines)[:4000], InlineKeyboardMarkup(rows)
+
+def act_view(cfg):
+    """Экран «Актуальность»: сводка и действия."""
+    store = _store(cfg)
+    orders = store.orders
+    total = len(orders)
+    closed = sum(1 for o in orders if o.get('status') == 'closed')
+    actual = sum(1 for o in orders if o.get('status') == 'actual')
+    unknown = total - closed - actual
+    text = (f'♻️ <b>Актуальность заказов</b>\n\n'
+            f'Всего в базе: <b>{total}</b>\n'
+            f'✅ актуальных: <b>{actual}</b>\n'
+            f'⛔️ неактуальных: <b>{closed}</b>\n'
+            f'❔ не проверено: <b>{unknown}</b>\n\n'
+            'Проверка открывает страницу каждого заказа и смотрит, жива ли она. '
+            'За один заход проверяется до 30 самых свежих заказов — '
+            'если в базе больше, нажми проверку ещё раз.')
+    rows = [
+        [InlineKeyboardButton('♻️ Проверить (до 30)', callback_data='act:check')],
+        [InlineKeyboardButton(f'🗑 Удалить неактуальные ({closed})',
+                              callback_data='act:del')],
+        [InlineKeyboardButton('🗂 Все заказы', callback_data='all')],
+        [InlineKeyboardButton('🏠 Меню', callback_data='menu')],
+    ]
+    return text, InlineKeyboardMarkup(rows)
 
 def kw_text(cfg):
     kws = cfg.get('keywords') or []
@@ -137,6 +205,11 @@ def order_text(o, est=None):
     price = esc(o.get('price') or '—')
     title = esc(o.get('title') or '(без названия)')
     lines = [f"🆕 [{esc(o.get('source'))}] <b>{title}</b>", f"💰 {price}"]
+    st = o.get('status')
+    if st == 'actual':
+        lines.append(f"✅ Актуально (проверено {fmt_dt(o.get('checked_at'))})")
+    elif st == 'closed':
+        lines.append(f"⛔️ Неактуально (проверено {fmt_dt(o.get('checked_at'))})")
     dt = fmt_dt(o.get('date') or o.get('found_at'))
     if dt:
         lines.append(f"🕘 {dt}")
@@ -503,6 +576,72 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lines.append(f"«{esc((last.get('title') or '')[:60])}»")
         await query.edit_message_text('\n'.join(lines), parse_mode='HTML',
                                       reply_markup=main_kb(cfg, chat_id))
+
+    elif data == 'all':
+        text, kb = all_view(cfg, page=0)
+        await query.edit_message_text(
+            text, parse_mode='HTML', reply_markup=kb,
+            link_preview_options=LinkPreviewOptions(is_disabled=True))
+
+    elif data.startswith('allp:'):
+        try:
+            page = int(data.split(':', 1)[1])
+        except ValueError:
+            page = 0
+        text, kb = all_view(cfg, page=page)
+        await query.edit_message_text(
+            text, parse_mode='HTML', reply_markup=kb,
+            link_preview_options=LinkPreviewOptions(is_disabled=True))
+
+    elif data == 'act':
+        text, kb = act_view(cfg)
+        await query.edit_message_text(text, parse_mode='HTML', reply_markup=kb)
+
+    elif data == 'act:check':
+        if CYCLE_LOCK.locked():
+            await query.answer('⏳ Проверка уже идёт, подожди немного',
+                               show_alert=True)
+            return
+        await query.edit_message_text('♻️ Проверяю актуальность заказов…\n'
+                                      'Это может занять пару минут.')
+        async with CYCLE_LOCK:
+            lines = []
+            try:
+                counts, _store = await asyncio.to_thread(
+                    core.check_actuality, cfg, lines.append, False, 30)
+            except Exception as e:
+                await query.edit_message_text(f'⚠️ Ошибка проверки: {e!r}')
+                return
+        text = (f'♻️ <b>Проверка завершена</b>\n\n'
+                f'✅ актуальных: <b>{counts["actual"]}</b>\n'
+                f'⛔️ неактуальных: <b>{counts["closed"]}</b>\n'
+                f'❔ не удалось проверить: <b>{counts["unknown"]}</b>\n\n'
+                'Статусы обновлены в базе. Неактуальные можно удалить '
+                'кнопкой ниже.')
+        rows = [
+            [InlineKeyboardButton('🗑 Удалить неактуальные',
+                                  callback_data='act:del')],
+            [InlineKeyboardButton('🗂 Все заказы', callback_data='all')],
+            [InlineKeyboardButton('🏠 Меню', callback_data='menu')],
+        ]
+        await query.edit_message_text(
+            text, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(rows))
+
+    elif data == 'act:del':
+        store = _store(cfg)
+        keys = [store._key(o) for o in store.orders
+                if o.get('status') == 'closed']
+        if not keys:
+            await query.answer('⛔️ Неактуальных заказов в базе нет',
+                               show_alert=True)
+            return
+        removed = await asyncio.to_thread(store.remove, keys)
+        text, kb = act_view(cfg)
+        await query.answer(f'🗑 Удалено: {len(removed)}')
+        await query.edit_message_text(text, parse_mode='HTML', reply_markup=kb)
+
+    elif data == 'noop':
+        await query.answer()
 
     elif data == 'kw':
         PENDING.pop(chat_id, None)

@@ -116,3 +116,43 @@ def run_cycle(cfg, log=print):
         price = o.get('price') or 'цена не указана'
         log(f"  + [{o['source']}] {o['title']} | {price} | {o['url']}")
     return fresh, store, stats
+
+def check_actuality(cfg, log=print, remove_closed=False, limit=None):
+    """Проверяет, живы ли ещё заказы в базе (актуально / неактуально).
+
+    Открывает страницу каждого заказа. Если страница удалена (HTTP 404/410),
+    редиректит со страницы заказа или в заголовке есть «удален/закрыт/404» —
+    заказ помечается closed. Иначе actual. Ошибки сети не меняют статус.
+    Возвращает (counts, store).
+    """
+    import actuality
+    store = storage.OrderStore(cfg['output']['json'], cfg['output']['csv'])
+    orders = store.orders[:]
+    if limit:
+        orders = orders[:int(limit)]
+    if not orders:
+        log('База пуста — проверять нечего.')
+        return {'actual': 0, 'closed': 0, 'unknown': 0}, store
+    cookies = (((cfg.get('sources') or {}).get('workzilla') or {}).get('cookies')
+               or '')
+    log(f'=== Проверка актуальности: {len(orders)} заказ(ов) ===')
+    counts = {'actual': 0, 'closed': 0, 'unknown': 0}
+    marks = {'actual': '✅', 'closed': '⛔️', 'unknown': '❔'}
+    updates = {}
+    for o in orders:
+        status, note = actuality.check_order(o, cookies=cookies)
+        counts[status] += 1
+        log(f"  {marks[status]} [{o.get('source', '?')}] "
+            f"{(o.get('title') or '')[:60]} — {note}")
+        updates[storage.OrderStore._key(o)] = (status, note)
+        time.sleep(float(cfg.get('actuality_pause', 1.5)))
+    store.apply_statuses(updates)
+    removed = []
+    if remove_closed:
+        removed = store.remove(
+            k for k, (s, _) in updates.items() if s == 'closed')
+    log(f'Итог: ✅ актуальных {counts["actual"]}, ⛔️ неактуальных '
+        f'{counts["closed"]}, ❔ не удалось проверить {counts["unknown"]}')
+    if remove_closed:
+        log(f'Удалено из базы: {len(removed)}')
+    return counts, store

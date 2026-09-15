@@ -1,5 +1,6 @@
 """Хранилище заказов: orders.json (всё, с дедупом) + orders.csv (Excel)."""
 import csv
+import datetime
 import json
 import os
 
@@ -43,6 +44,30 @@ class OrderStore:
                 w.writeheader()
             for o in new_orders:
                 w.writerow({k: o.get(k, '') for k in FIELDS})
+
+    def apply_statuses(self, updates):
+        """updates: {key: (status, note)} — массово пишет статус заказов."""
+        if not updates:
+            return 0
+        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        n = 0
+        for o in self.orders:
+            u = updates.get(self._key(o))
+            if u:
+                o['status'], o['status_note'], o['checked_at'] = u[0], u[1], now
+                n += 1
+        if n:
+            self._save_json()
+        return n
+
+    def remove(self, keys):
+        """Удаляет заказы по ключам. Возвращает список удалённых."""
+        keys = set(keys)
+        removed = [o for o in self.orders if self._key(o) in keys]
+        if removed:
+            self.orders = [o for o in self.orders if self._key(o) not in keys]
+            self._save_json()
+        return removed
 
     def add(self, orders):
         """Добавляет только новые заказы. Возвращает список новых."""

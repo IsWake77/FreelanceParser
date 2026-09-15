@@ -22,6 +22,7 @@ class HttpClient:
         self.timeout = timeout
         self.retries = retries
         self.pause = pause
+        self.last_url = None
         self.headers = {
             'User-Agent': user_agent,
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -65,6 +66,7 @@ class HttpClient:
             try:
                 req = urllib.request.Request(url, data=body, headers=hdrs, method=method)
                 with self.opener.open(req, timeout=self.timeout) as resp:
+                    self.last_url = resp.geturl()
                     return resp.status, resp.read()
             except urllib.error.HTTPError as e:
                 last_err = HttpError(f'HTTP {e.code} для {url}')
